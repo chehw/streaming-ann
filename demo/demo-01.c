@@ -116,7 +116,7 @@ static int on_new_frame(io_input_t * input, const input_frame_t * frame)
 
 static ai_context_t g_ai_context[1] = {{
 	.server_url = "http://127.0.0.1:9090/ai",
-	.video_src = "/dev/video2",
+	.video_src = "videos/渋谷スクランブル交差点.mp4",
 }};
 #include <getopt.h>
 

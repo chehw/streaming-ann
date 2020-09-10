@@ -70,6 +70,7 @@ typedef struct global_param
 {
 	struct shell_context * shell;
 	json_object * jconfig;
+	json_object * jinput;
 	json_object * jsettings;
 	
 	ssize_t count;
@@ -137,13 +138,22 @@ static int parse_args(int argc, char ** argv, global_param_t * params)
 	json_object * jconfig = json_object_from_file(conf_file);
 	assert(jconfig);
 	
+	printf("jconfig: %s\n", json_object_to_json_string_ext(jconfig, JSON_C_TO_STRING_PRETTY));
+	
 	params->jconfig = jconfig;
 	ok = json_object_object_get_ex(jconfig, "settings", &params->jsettings);
 	assert(ok && params->jsettings);
 	
+	json_object * jinput = NULL;
+	ok = json_object_object_get_ex(jconfig, "input", &jinput);
+	if(!ok || !jinput) return -1;
+	params->jinput = jinput;
+	
 	json_object * jsettings = params->jsettings;
 	params->count = json_object_array_length(jsettings);
 	if(params->count <= 0) return 0;
+	
+	
 	
 	region_data_t * regions = params->regions;
 	for(int i = 0; i < params->count; ++i)
@@ -189,7 +199,7 @@ int main(int argc, char **argv)
 	shell_context_t * shell = shell_context_init(argc, argv, ctx);
 	
 	io_input_t * input = io_input_init(NULL, IO_PLUGIN_DEFAULT, shell);
-	input->init(input, ctx->jconfig);
+	input->init(input, ctx->jinput);
 	input->on_new_frame = on_new_frame;
 	input->run(input);
 	
@@ -382,12 +392,11 @@ static gboolean on_draw(struct da_panel * panel, cairo_t * cr, void * user_data)
 	cairo_set_source_surface(cr, panel->surface, panel->x_offset, panel->y_offset);
 	cairo_paint(cr);
 	cairo_restore(cr);
-	//~ printf("points_count: %d\n", shell->points_count);
 	
 	global_param_t * params = shell->user_data;
 	assert(params);
 	
-	printf("points_count: %d, params->count=%d\n", shell->points_count, (int)params->count);
+	// printf("points_count: %d, params->count=%d\n", shell->points_count, (int)params->count);
 	if(params->count > 0)
 	{
 		cairo_new_path(cr);
@@ -693,10 +702,15 @@ static int load_config(shell_context_t * shell, const char * conf_file)
 			json_object_put(params->jconfig);
 		}
 		params->jconfig = jconfig;
-		
+		json_object * jinput = NULL;
 		json_object * jsettings = NULL;
 		json_bool ok = json_object_object_get_ex(jconfig, "settings", &jsettings);
 		if(!ok || !jsettings) return -1;
+		params->jsettings = jsettings;
+		
+		ok = json_object_object_get_ex(jconfig, "input", &jinput);
+		if(!ok || !jinput) return -1;
+		params->jinput = jinput;
 		
 		int count = json_object_array_length(jsettings);
 		if(count > 0) 
